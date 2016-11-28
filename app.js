@@ -11,17 +11,6 @@ var index = require('./routes/index');
 var users = require('./routes/users');
 var api = require('./routes/api');
 
-//connect mongoose
-var connection_string = '127.0.0.1:27017/fantasycards';
-//var connection_string = '130.211.96.216/:27017/' + config.gameCode;// <= google
-// if OPENSHIFT env variables are present, use the available connection info:
-if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
-	connection_string = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ":" + process.env.OPENSHIFT_MONGODB_DB_PASSWORD + "@" + process.env.OPENSHIFT_MONGODB_DB_HOST + ':' + process.env.OPENSHIFT_MONGODB_DB_PORT + '/' + process.env.OPENSHIFT_APP_NAME; //+ process.env.OPENSHIFT_APP_NAME;
-}
-
-mongoose.connect(connection_string, function(e) {
-	console.log('mongo connected...', connection_string)
-});
 
 
 // initialise firebase
@@ -29,6 +18,37 @@ firebaseAdmin.initializeApp({
 	credential: firebaseAdmin.credential.cert(__dirname + "/specialt-a289f-firebase-adminsdk-4rv2y-8407f58940.json"),
 	databaseURL: "https://specialt-a289f.firebaseio.com"
 });
+
+
+//connect mongoose
+var connection_string = '127.0.0.1:27017/specialt';
+var mongoURL = process.env.OPENSHIFT_MONGODB_DB_URL || process.env.MONGO_URL,
+	mongoURLLabel = "";
+
+if (mongoURL == null && process.env.DATABASE_SERVICE_NAME) {
+	var mongoServiceName = process.env.DATABASE_SERVICE_NAME.toUpperCase(),
+		mongoHost = process.env[mongoServiceName + '_SERVICE_HOST'],
+		mongoPort = process.env[mongoServiceName + '_SERVICE_PORT'],
+		mongoDatabase = process.env[mongoServiceName + '_DATABASE'],
+		mongoPassword = process.env[mongoServiceName + '_PASSWORD']
+	mongoUser = process.env[mongoServiceName + '_USER'];
+
+	if (mongoHost && mongoPort && mongoDatabase) {
+		mongoURLLabel = mongoURL = 'mongodb://';
+		if (mongoUser && mongoPassword) {
+			mongoURL += mongoUser + ':' + mongoPassword + '@';
+		}
+		// Provide UI label that excludes user id and pw
+		mongoURLLabel += mongoHost + ':' + mongoPort + '/' + mongoDatabase;
+		mongoURL += mongoHost + ':' + mongoPort + '/' + mongoDatabase;
+		connection_string = mongoURL;
+	}
+}
+mongoose.connect(connection_string, function(e) {
+	console.log('mongo connected...', connection_string)
+});
+
+
 
 var app = express();
 // Enables CORS
